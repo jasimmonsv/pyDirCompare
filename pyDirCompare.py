@@ -1,8 +1,11 @@
 '''
 Created on 19 Oct 2012
-
 @author: J.A. Simmons V
 Program to crawl two similar directory structors and report on the differences
+
+v1.0
+in this version, we realized that the default structure contained all base files and second structure only contained
+the changed files. This allowed a much simpler calculation that did not require comparing the two data structures.
 '''
 
 import os
@@ -13,7 +16,6 @@ import threading
 import Queue
 import time
 paths = ['C:\\Temp\\test1\\','C:\\Temp\\test2\\']
-#paths = ['C:\\Program Files\\Loansoft\\Default\\Production','C:\\Program Files\\Loansoft\\Cornerstone\\PRODUCTION']
 originalKeyword = 'test1'#'Set your keyword here' #a keyword in the path of which is the original directory to measure against
 queue = Queue.Queue()
 out_queue = Queue.Queue()
@@ -33,12 +35,11 @@ class CrawlThread(threading.Thread):
 	  self.queue.task_done()
 
 class treeFiles:
-
     #default constructor to build require tree
     def __init__(self, name, size, hashed):
         self.name = name
         self.hashed = hashed
-        self.size = size
+        self.size = float(size)
 
 def crawlDir(dir):
     retFiles = []
@@ -57,16 +58,22 @@ def crawlDir(dir):
             totalFiles +=1
     return retFiles, total, parent
 
-#compare() will take the modified file structure of dir2 and compare against the original file structure (dir1)
-def compare(dir1, dir2):
+#compare() will take the modified file structure and compare against the original file structure
+#will only find that which is similar and retruns the final byte size of all the same files
+def compare(originalStruct, modifiedStruct):
   matched = []
   sameSize = 0
-  for x in dir2:
-    for i in [i for i,y in enumerate(dir1) if y.hashed==x.hashed]:
+  for x in modifiedStruct:
+    for i in [i for i,y in enumerate(originalStruct) if y.hashed==x.hashed]:
       matched.append(x)
-      sameSize = sameSize+abs(y.size - x.size)
+      sameSize = sameSize+x.size
   return sameSize
   
+'''
+*************************************************************************************************
+**********************************  Main  *******************************************************
+*************************************************************************************************
+'''
 print "Crawling..."
 files=[] #holder to grab the processed files out of the queue
 start = time.time()#when the heavy lifting started
@@ -82,24 +89,18 @@ for i in range(len(paths)):
 queue.join()
 
 print 'Processing...'
-while not out_queue.empty():
+while not out_queue.empty():#grab all the files out of the queue
 	files.append(out_queue.get(True))
-if files[0][2].find(originalKeyword)>=0:
-  sameSize = compare(files[0][0],files[1][0])
-  print str(float((float(files[0][1]-files[1][1])/float(files[0][1]))*100))+'% difference in bytes'
-elif files[1][2].find(originalKeyword)>=0:
-  sameSize = compare(files[1][0],files[0][0])
-  print 'File 2:'+str(files[1][1])+' Diff: '+str(files[1][1]-sameSize)
-  print str(float((float(files[1][1]-files[0][1])/float(files[1][1]))*100))+'% difference in bytes'
-else: 
+if files[0][2].find(originalKeyword)>=0:#if the original structure is in the first set of files
+  #sameSize = compare(files[0][0],files[1][0])
+  print '1: '+str(files[0][1])
+  print '2: '+str(files[1][1])
+  print str(((files[1][1]+files[0][1])/float(files[0][1]))*100)+'% difference in bytes'
+elif files[1][2].find(originalKeyword)>=0:#if original structure is in the second set of files
+  print '1: '+str(files[1][1])
+  print '2: '+str(files[0][1])
+  print str(((files[1][1]+files[0][1])/float(files[1][1]))*100)+'% difference in bytes'
+else: #otherwise an error happened
   print 'Error - neither path is found as the original'  
 print "Elapsed Time: %s" % (time.time() - start)
 quit()
-'''results = []
-for e in dir1Files:
-    for e in dir2Files:
-        print True
-print dir1+' = '+str(dir1Total)
-print dir2+' = '+str(dir2Total)
-print (float((dir2Total-dir1Total))/float(dir1Total))*100
-print "Done!"'''
